@@ -5,17 +5,23 @@ from sklearn.model_selection import GridSearchCV
 from _datetime import datetime
 from math import sin, cos, sqrt, atan2, radians
 
-
+# Read data
 test = pd.read_csv("E:/MSc/Sem 02/Machine Learning/Kaggle/test.csv")
 train = pd.read_csv("E:/MSc/Sem 02/Machine Learning/Kaggle/train.csv")
 
-R = 6373 # Radius of earth in km
 
-# Train
+# Pre-processing the Train data set
+
+# Calculating the true time duration my subtracting pickup_time from drop_time
 train['true_duration'] = 0
 for i in range(0,len(train)):
     train.at[i,'true_duration'] =(datetime.strptime(train['drop_time'][i], '%m/%d/%Y %H:%M') -
                                    datetime.strptime(train['pickup_time'][i], '%m/%d/%Y %H:%M')).seconds
+
+
+# Calculating the distance travelled using the Pickup latitude, Pickup longitude, Drop latitude and Drop longitude
+
+R = 6373 # Radius of earth in km
 
 for j in range(0, len(train)):
     train.at[j, 'lat1'] = radians(train['pick_lat'][j])
@@ -32,16 +38,23 @@ for i in range(0, len(train)):
     train.loc[i,'c'] = 2 * atan2(sqrt(a), sqrt(1 - a))
 
 train['distance'] = R * train['c']
+
+# Remove unwanted variables
 train = train.drop(['tripid', 'pickup_time', 'drop_time', 'pick_lon', 'drop_lat', 'drop_lon', 'lat1', 'lon1', 'lat2', 'lon2',
             'dlon', 'dlat', 'c'], axis = 1)
 
 print("Train data set is done")
 
-# Test
+# Pre-processing the Test data set
+
+# Calculating the true time duration my subtracting pickup_time from drop_time
 test['true_duration'] = 0
 for i in range(0,len(test)):
     test.at[i,'true_duration'] =(datetime.strptime(test['drop_time'][i], '%m/%d/%Y %H:%M') -
                                    datetime.strptime(test['pickup_time'][i], '%m/%d/%Y %H:%M')).seconds
+
+
+# Calculating the distance travelled using the Pickup latitude, Pickup longitude, Drop latitude and Drop longitude
 
 for j in range(0, len(test)):
     test.at[j, 'lat1'] = radians(test['pick_lat'][j])
@@ -58,18 +71,24 @@ for i in range(0, len(test)):
     test.loc[i,'c'] = 2 * atan2(sqrt(a), sqrt(1 - a))
 
 test['distance'] = R * test['c']
+
+# Remove unwanted variables
 test = test.drop(['tripid', 'pickup_time', 'drop_time', 'pick_lon', 'drop_lat', 'drop_lon', 'lat1', 'lon1', 'lat2', 'lon2',
            'dlon', 'dlat', 'c'], axis = 1)
 
 print("Test data set is done")
 
+
+# Set the parameters for model building
 params = {'fit_intercept': [True], "class_weight": ["balanced"]}
+
+# Mode Building
 base_model = LogisticRegression().fit(train.loc[:,test.columns != 'label'], train['label'])
 init_model = GridSearchCV(estimator=base_model, param_grid=params)
 logistic_model = init_model.fit(train.loc[:,test.columns != 'label'], train['label']).best_estimator_
-
 print("Model building is done")
 
+# Prediction
 predictions = pd.DataFrame(logistic_model.predict(test))
 predictions.columns = ['predicted_class']
 
