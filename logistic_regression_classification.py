@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV
 from _datetime import datetime
 from math import sin, cos, sqrt, atan2, radians
 
@@ -32,7 +32,7 @@ for i in range(0, len(train)):
     train.loc[i,'c'] = 2 * atan2(sqrt(a), sqrt(1 - a))
 
 train['distance'] = R * train['c']
-train.drop(['tripid', 'pickup_time', 'drop_time', 'pick_lon', 'drop_lat', 'drop_lon', 'lat1', 'lon1', 'lat2', 'lon2',
+train = train.drop(['tripid', 'pickup_time', 'drop_time', 'pick_lon', 'drop_lat', 'drop_lon', 'lat1', 'lon1', 'lat2', 'lon2',
             'dlon', 'dlat', 'c'], axis = 1)
 
 print("Train data set is done")
@@ -58,28 +58,19 @@ for i in range(0, len(test)):
     test.loc[i,'c'] = 2 * atan2(sqrt(a), sqrt(1 - a))
 
 test['distance'] = R * test['c']
-test.drop(['tripid', 'pickup_time', 'drop_time', 'pick_lon', 'drop_lat', 'drop_lon', 'lat1', 'lon1', 'lat2', 'lon2',
+test = test.drop(['tripid', 'pickup_time', 'drop_time', 'pick_lon', 'drop_lat', 'drop_lon', 'lat1', 'lon1', 'lat2', 'lon2',
            'dlon', 'dlat', 'c'], axis = 1)
 
 print("Test data set is done")
 
-n_estimators = [int(x) for x in np.linspace(start=200,stop=1000,num=5)]
-max_features = ['auto']
-max_depth = [int(x) for x in np.linspace(10,50,num=5)]
-max_depth.append(None)
-min_samples_split = [2]
-bootstrap = [True,False]
-random_grid = {'n_estimators':n_estimators,
-               'max_features':max_features,
-               'max_depth':max_depth,
-               'min_samples_split':min_samples_split,
-               'bootstrap':bootstrap}
+params = {'fit_intercept': [True], "class_weight": ["balanced"]}
+base_model = LogisticRegression().fit(train.loc[:,test.columns != 'label'], train['label'])
+init_model = GridSearchCV(estimator=base_model, param_grid=params)
+logistic_model = init_model.fit(train.loc[:,test.columns != 'label'], train['label']).best_estimator_
 
-rf = RandomForestClassifier()
-rf_random = RandomizedSearchCV(estimator=rf, param_distributions= random_grid, n_iter= 100, cv = 10, verbose=2,
-                               random_state=42,n_jobs=-1)
-rf_random.fit(train.loc[:,train.columns != 'label'], train['label'])
-predictions = pd.DataFrame(rf_random.predict(test.loc[:,test.columns != 'label']))
+print("Model building is done")
+
+predictions = pd.DataFrame(logistic_model.predict(test))
 predictions.columns = ['predicted_class']
 
-# predictions.to_csv("E:/MSc/Sem 02/Machine Learning/Kaggle/results/predictions.csv")
+# predictions.to_csv("E:/MSc/Sem 02/Machine Learning/Kaggle/results/logistic_predictions.csv")
